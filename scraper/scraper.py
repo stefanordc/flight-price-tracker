@@ -42,7 +42,7 @@ cidade_origem = map_cidades[aeroporto_origem]
 resultados = []
 
 # -----------------------------
-# Datas de ida e volta fixas (pode ser ajustado)
+# Datas de ida e volta fixas
 # -----------------------------
 data_ida = "2026-05-04"
 data_volta = "2026-05-05"
@@ -51,15 +51,15 @@ data_volta = "2026-05-05"
 # Função scraper
 # -----------------------------
 def rodar_scraper(url):
-
     with sync_playwright() as p:
-
-        browser = p.chromium.launch(headless=False)
+        browser = p.chromium.launch(
+            headless=True,  # OBRIGATÓRIO no GitHub Actions
+            args=["--no-sandbox", "--disable-setuid-sandbox"]
+        )
         page = browser.new_page()
 
-        page.goto(url)
-
         try:
+            page.goto(url, timeout=60000)
             page.wait_for_selector('button[aria-label^="Ordenados por"]', timeout=60000)
             page.click('button[aria-label^="Ordenados por"]')
             page.wait_for_timeout(2000)
@@ -86,7 +86,6 @@ def rodar_scraper(url):
 # Loop destinos
 # -----------------------------
 for cidade_destino, url in destinos.items():
-
     print("Coletando:", cidade_destino)
     menor_preco = rodar_scraper(url)
 
@@ -117,7 +116,6 @@ print(df)
 # Inserir no Supabase
 # -----------------------------
 for _, row in df.iterrows():
-
     preco_valor = int(row["preço"]) if row["preço"] is not None else None
 
     supabase.table("voos").insert({
