@@ -2,8 +2,11 @@ name: Flight Price Scraper
 
 on:
   schedule:
-    - cron: '0 * * * *'  # Todo dia, de hora em hora
+    - cron: '0 * * * *'
   workflow_dispatch:
+
+permissions:
+  contents: write  # ← permite o bot fazer push
 
 jobs:
   scrape:
