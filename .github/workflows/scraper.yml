@@ -1,0 +1,35 @@
+name: Flight Price Scraper
+
+on:
+  schedule:
+    # Roda todo dia, de hora em hora entre 16h e 23h BRT (19-02 UTC)
+    - cron: '0 19-2 * * *'
+  workflow_dispatch:  # Permite rodar manualmente
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checar código
+        uses: actions/checkout@v3
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Instalar dependências
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Rodar scraper
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          source venv/bin/activate
+          python scraper/scraper.py
