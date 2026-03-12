@@ -4,11 +4,12 @@ import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
 
+# Supabase
 SUPABASE_URL = "https://zceaqvoiiegksktegiik.supabase.co"
 SUPABASE_KEY = "sb_secret_5ctv6B9ENNxX7-wGGxOm7Q_Lv7IAnyv"
-
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# Destinos
 destinos = {
     "São Paulo": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDR1JVGh4SCjIwMjYtMDUtMDVqBwgBEgNHUlVyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB",
     "Rio de Janeiro": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDR0lHGh4SCjIwMjYtMDUtMDVqBwgBEgNHSUdyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB",
@@ -26,6 +27,7 @@ map_cidades = {
     "CDG": "Paris"
 }
 
+# Configuração geral
 aeroporto_origem = "CNF"
 cidade_origem = map_cidades[aeroporto_origem]
 data_ida = "2026-05-04"
@@ -34,50 +36,44 @@ resultados = []
 
 def rodar_scraper(url):
     with sync_playwright() as p:
+        # Sempre headless no Actions
         browser = p.chromium.launch(
-            headless=False,
+            headless=True,
             args=["--no-sandbox", "--disable-setuid-sandbox"]
         )
-        # Simula navegador real em português do Brasil
         context = browser.new_context(
             locale="pt-BR",
             timezone_id="America/Sao_Paulo",
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         )
         page = context.new_page()
-
         try:
             page.goto(url, timeout=60000, wait_until="networkidle")
-            page.wait_for_timeout(3000)
 
-            # Tenta seletor em português e inglês
-            seletor = 'button[aria-label^="Ordenados por"], button[aria-label^="Sort by"]'
-            page.wait_for_selector(seletor, timeout=60000)
-            page.click(seletor)
-            page.wait_for_timeout(2000)
-
-            # Clica em "Preço" ou "Price"
+            # Espera até algum preço aparecer (R$ ou $)
             try:
-                page.click('li >> text=Preço')
+                page.wait_for_selector('div[aria-label*="R$"], div[aria-label*="$"]', timeout=15000)
             except:
-                page.click('li >> text=Price')
-            page.wait_for_timeout(5000)
+                print("Atenção: preço não carregou na página")
+                return None
 
             texto = page.inner_text("body")
-            precos = re.findall(r'R\$\s?([\d\.]+)', texto)
+
+            # Captura preços em R$ ou USD
+            precos = re.findall(r'(?:R\$|\$)\s?([\d\.]+)', texto)
             precos = [int(p.replace(".", "")) for p in precos if len(p) >= 3]
 
             if precos:
                 return min(precos)
             else:
                 return None
-
         except Exception as e:
             print("Erro ao coletar preço:", e)
             return None
         finally:
             browser.close()
 
+# Loop principal
 for cidade_destino, url in destinos.items():
     print("Coletando:", cidade_destino)
     menor_preco = rodar_scraper(url)
@@ -94,18 +90,18 @@ for cidade_destino, url in destinos.items():
         "cidade_origem": cidade_origem,
         "aeroporto_destino": aeroporto_destino,
         "cidade_destino": cidade_destino,
-        "preco": menor_preco,  # sem acento para evitar problemas
+        "preco": menor_preco,
         "data_ida": data_ida,
         "data_volta": data_volta
     })
 
+# Cria DataFrame
 df = pd.DataFrame(resultados)
 print(df)
 
+# Envia para Supabase
 for _, row in df.iterrows():
-    # Corrige o NaN → None antes de inserir
     preco_valor = None if pd.isna(row["preco"]) else int(row["preco"])
-
     supabase.table("voos").insert({
         "coleta": row["coleta"],
         "hora": row["hora"],
