@@ -2,9 +2,9 @@ name: Scraper de Voos
 
 on:
   schedule:
-    # Rodar de hora em hora, minuto 0
+    # Roda no minuto 0 de cada hora, todos os dias (UTC)
     - cron: "0 * * * *"
-  workflow_dispatch: # permite rodar manualmente
+  workflow_dispatch: # Permite rodar manualmente pelo botão "Run workflow"
 
 jobs:
   run_scraper:
@@ -12,21 +12,34 @@ jobs:
 
     steps:
       - name: Checkout do repositório
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Atualizado para v4 (mais estável)
 
       - name: Configurar Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # Atualizado para v5
         with:
           python-version: "3.12"
+          cache: 'pip' # Otimiza as próximas execuções cacheando dependências
 
       - name: Instalar dependências
         run: |
-          python -m venv venv
-          source venv/bin/activate
-          pip install --upgrade pip
-          pip install -r requirements.txt
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Rodar scraper
         run: |
-          source venv/bin/activate
+          # Se o seu script estiver na pasta 'scraper/'
           python scraper/scraper.py
+        env:
+          # Caso seu script precise de chaves de API, adicione-as aqui como Secrets
+          # MINHA_API_KEY: ${{ secrets.MINHA_API_KEY }}
+          PYTHONPATH: .
+
+      # OPCIONAL: Se o seu scraper gera um arquivo (ex: dados.csv) 
+      # e você quer salvar de volta no GitHub:
+      - name: Commit e Push dos resultados
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add .
+          git commit -m "Auto-update: Resultados do scraper $(date)" || echo "Sem alterações para commitar"
+          git push
