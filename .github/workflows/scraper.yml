@@ -1,32 +1,32 @@
-name: Flight Scraper
+name: Scraper de Voos
 
 on:
   schedule:
-    # Roda todo dia, de hora em hora, das 16:00 até 23:00
-    - cron: "0 16-23 * * *"
-  workflow_dispatch:  # Permite rodar manualmente pelo GitHub
+    # Rodar de hora em hora, minuto 0 de todas as horas
+    - cron: "0 * * * *"
+  workflow_dispatch: # permite rodar manualmente no GitHub
 
 jobs:
-  run-scraper:
+  run_scraper:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout do repositório
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Configurar Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
-      - name: Install dependencies
+      - name: Instalar dependências
         run: |
           python -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run scraper
+      - name: Rodar scraper
         run: |
           source venv/bin/activate
           python scraper/scraper.py
