@@ -35,7 +35,7 @@ resultados = []
 def rodar_scraper(url):
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            headless=True,
+            headless=False,
             args=["--no-sandbox", "--disable-setuid-sandbox"]
         )
         # Simula navegador real em português do Brasil
