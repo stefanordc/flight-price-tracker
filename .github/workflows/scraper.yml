@@ -2,21 +2,12 @@ name: Flight Price Scraper
 
 on:
   schedule:
-    # O GitHub usa UTC (Brasília +3h). 
-    # Para rodar das 16h às 23h BRT:
-    
-    # 1. Das 19:00 às 23:00 UTC (16h às 20h BRT)
-    - cron: '0 19-23 * * *'
-    
-    # 2. Das 00:00 às 02:00 UTC (21h às 23h BRT)
-    - cron: '0 0-2 * * *'
-    
-  workflow_dispatch: # Permite rodar manualmente para testar
+    - cron: '0 * * * *'  # Todo dia, de hora em hora
+  workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checar código
         uses: actions/checkout@v4
@@ -37,7 +28,6 @@ jobs:
         env:
           PYTHONPATH: .
 
-      # PASSO IMPORTANTE: Salvar as alterações (CSV/JSON) de volta no GitHub
       - name: Commit e Push dos dados
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
