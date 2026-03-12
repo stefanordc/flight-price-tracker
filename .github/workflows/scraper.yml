@@ -2,9 +2,9 @@ name: Scraper de Voos
 
 on:
   schedule:
-    # Rodar de hora em hora, minuto 0 de todas as horas
+    # Rodar de hora em hora, minuto 0
     - cron: "0 * * * *"
-  workflow_dispatch: # permite rodar manualmente no GitHub
+  workflow_dispatch: # permite rodar manualmente
 
 jobs:
   run_scraper:
