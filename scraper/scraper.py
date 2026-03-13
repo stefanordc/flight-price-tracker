@@ -4,12 +4,10 @@ import pandas as pd
 from datetime import datetime
 from supabase import create_client, Client
 
-# Supabase
 SUPABASE_URL = "https://zceaqvoiiegksktegiik.supabase.co"
 SUPABASE_KEY = "sb_secret_5ctv6B9ENNxX7-wGGxOm7Q_Lv7IAnyv"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Destinos
 destinos = {
     "São Paulo": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDR1JVGh4SCjIwMjYtMDUtMDVqBwgBEgNHUlVyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB",
     "Rio de Janeiro": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDR0lHGh4SCjIwMjYtMDUtMDVqBwgBEgNHSUdyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB",
@@ -27,59 +25,84 @@ map_cidades = {
     "CDG": "Paris"
 }
 
-# Configuração geral
 aeroporto_origem = "CNF"
 cidade_origem = map_cidades[aeroporto_origem]
 data_ida = "2026-05-04"
 data_volta = "2026-05-05"
 resultados = []
 
-def rodar_scraper(url):
+def rodar_scraper(url, cidade):
     with sync_playwright() as p:
-        # Sempre headless no Actions
         browser = p.chromium.launch(
             headless=True,
-            args=["--no-sandbox", "--disable-setuid-sandbox"]
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-blink-features=AutomationControlled",  # esconde que é bot
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+            ]
         )
         context = browser.new_context(
             locale="pt-BR",
             timezone_id="America/Sao_Paulo",
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+            viewport={"width": 1280, "height": 800},
+            java_script_enabled=True,
         )
-        page = context.new_page()
-        try:
-            page.goto(url, timeout=60000, wait_until="networkidle")
 
-            # Espera até algum preço aparecer (R$ ou $)
-            try:
-                page.wait_for_selector('div[aria-label*="R$"], div[aria-label*="$"]', timeout=15000)
-            except:
-                print("Atenção: preço não carregou na página")
-                return None
+        # Remove sinais de webdriver
+        context.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+            Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en'] });
+        """)
+
+        page = context.new_page()
+
+        try:
+            page.goto(url, timeout=90000, wait_until="networkidle")
+
+            # Aguarda a página estabilizar
+            page.wait_for_timeout(5000)
+
+            # Salva screenshot para debug (aparece no log do Actions)
+            page.screenshot(path=f"screenshot_{cidade.replace(' ', '_')}.png")
 
             texto = page.inner_text("body")
 
-            # Captura preços em R$ ou USD
-            precos = re.findall(r'(?:R\$|\$)\s?([\d\.]+)', texto)
-            precos = [int(p.replace(".", "")) for p in precos if len(p) >= 3]
+            # Tenta R$ primeiro, depois $ (caso o servidor esteja em inglês)
+            precos_brl = re.findall(r'R\$\s?([\d\.]+)', texto)
+            precos_usd = re.findall(r'\$\s?([\d,]+)', texto)
 
-            if precos:
-                return min(precos)
+            if precos_brl:
+                precos = [int(p.replace(".", "")) for p in precos_brl if len(p) >= 3]
+                print(f"  → Preços BRL encontrados: {precos[:5]}")
+            elif precos_usd:
+                precos = [int(p.replace(",", "")) for p in precos_usd if len(p) >= 3]
+                print(f"  → Preços USD encontrados: {precos[:5]}")
             else:
-                return None
+                precos = []
+                print("  → Nenhum preço encontrado no texto")
+                # Salva trecho do texto para debug
+                print("  → Trecho da página:", texto[:500])
+
+            return min(precos) if precos else None
+
         except Exception as e:
-            print("Erro ao coletar preço:", e)
+            print(f"Erro ao coletar preço para {cidade}:", e)
             return None
         finally:
             browser.close()
 
-# Loop principal
 for cidade_destino, url in destinos.items():
-    print("Coletando:", cidade_destino)
-    menor_preco = rodar_scraper(url)
+    print(f"\nColetando: {cidade_destino}")
+    menor_preco = rodar_scraper(url, cidade_destino)
 
     if menor_preco is None:
-        print(f"Atenção: não foi encontrado preço para {cidade_destino}")
+        print(f"  → Não foi encontrado preço para {cidade_destino}")
+    else:
+        print(f"  → Menor preço: {menor_preco}")
 
     aeroporto_destino = list(map_cidades.keys())[list(map_cidades.values()).index(cidade_destino)]
 
@@ -95,11 +118,9 @@ for cidade_destino, url in destinos.items():
         "data_volta": data_volta
     })
 
-# Cria DataFrame
 df = pd.DataFrame(resultados)
-print(df)
+print("\n", df)
 
-# Envia para Supabase
 for _, row in df.iterrows():
     preco_valor = None if pd.isna(row["preco"]) else int(row["preco"])
     supabase.table("voos").insert({
@@ -114,4 +135,4 @@ for _, row in df.iterrows():
         "data_volta": row["data_volta"]
     }).execute()
 
-print("Dados enviados para o Supabase.")
+print("\nDados enviados para o Supabase.")
