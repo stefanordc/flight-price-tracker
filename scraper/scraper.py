@@ -9,11 +9,11 @@ SUPABASE_KEY = "sb_secret_5ctv6B9ENNxX7-wGGxOm7Q_Lv7IAnyv"
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 destinos = {
-    "São Paulo": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDR1JVGh4SCjIwMjYtMDUtMDVqBwgBEgNHUlVyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB",
-    "Rio de Janeiro": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDR0lHGh4SCjIwMjYtMDUtMDVqBwgBEgNHSUdyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB",
-    "Buenos Aires": "https://www.google.com/travel/flights/search?tfs=CBwQAhokEgoyMDI2LTA1LTA0agcIARIDQ05Gcg0IAxIJL20vMDFseTVtGiQSCjIwMjYtMDUtMDVqDQgDEgkvbS8wMWx5NW1yBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB",
-    "Miami": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDTUlBGh4SCjIwMjYtMDUtMDVqBwgBEgNNSUFyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB",
-    "Paris": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDQ0RHGh4SCjIwMjYtMDUtMDVqBwgBEgNDREdyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB"
+    "São Paulo": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDR1JVGh4SCjIwMjYtMDUtMDVqBwgBEgNHUlVyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB&curr=BRL",
+    "Rio de Janeiro": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDR0lHGh4SCjIwMjYtMDUtMDVqBwgBEgNHSUdyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB&curr=BRL",
+    "Buenos Aires": "https://www.google.com/travel/flights/search?tfs=CBwQAhokEgoyMDI2LTA1LTA0agcIARIDQ05Gcg0IAxIJL20vMDFseTVtGiQSCjIwMjYtMDUtMDVqDQgDEgkvbS8wMWx5NW1yBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB&curr=BRL",
+    "Miami": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDTUlBGh4SCjIwMjYtMDUtMDVqBwgBEgNNSUFyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB&curr=BRL",
+    "Paris": "https://www.google.com/travel/flights/search?tfs=CBwQAhoeEgoyMDI2LTA1LTA0agcIARIDQ05GcgcIARIDQ0RHGh4SCjIwMjYtMDUtMDVqBwgBEgNDREdyBwgBEgNDTkZAAUgBcAGCAQsI____________AZgBAQ&tfu=EgoIAhAAGAAgAigB&curr=BRL"
 }
 
 map_cidades = {
