@@ -32,68 +32,61 @@ data_volta = "2026-05-05"
 resultados = []
 
 def rodar_scraper(url, cidade):
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=[
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-blink-features=AutomationControlled",  # esconde que é bot
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-            ]
-        )
-        context = browser.new_context(
-            locale="pt-BR",
-            timezone_id="America/Sao_Paulo",
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-            viewport={"width": 1280, "height": 800},
-            java_script_enabled=True,
-        )
+    for tentativa in range(3):
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-setuid-sandbox",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                ]
+            )
+            context = browser.new_context(
+                locale="pt-BR",
+                timezone_id="America/Sao_Paulo",
+                user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+                viewport={"width": 1280, "height": 800},
+                java_script_enabled=True,
+            )
+            context.add_init_script("""
+                Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+                Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en'] });
+            """)
+            page = context.new_page()
 
-        # Remove sinais de webdriver
-        context.add_init_script("""
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
-            Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en'] });
-        """)
+            try:
+                page.goto(url, timeout=90000, wait_until="networkidle")
+                page.wait_for_timeout(8000)
 
-        page = context.new_page()
+                texto = page.inner_text("body")
 
-        try:
-            page.goto(url, timeout=90000, wait_until="networkidle")
+                precos_brl = re.findall(r'R\$\s?([\d\.]+)', texto)
+                precos_usd = re.findall(r'\$\s?([\d,]+)', texto)
 
-            # Aguarda a página estabilizar
-            page.wait_for_timeout(5000)
+                if precos_brl:
+                    precos = [int(p.replace(".", "")) for p in precos_brl if len(p) >= 3]
+                elif precos_usd:
+                    precos = [int(p.replace(",", "")) for p in precos_usd if len(p) >= 3]
+                else:
+                    precos = []
 
-            # Salva screenshot para debug (aparece no log do Actions)
-            page.screenshot(path=f"screenshot_{cidade.replace(' ', '_')}.png")
+                if precos:
+                    print(f"  → Tentativa {tentativa+1}: menor preço = {min(precos)}")
+                    return min(precos)
+                else:
+                    print(f"  → Tentativa {tentativa+1}: sem preço, tentando novamente...")
 
-            texto = page.inner_text("body")
+            except Exception as e:
+                print(f"  → Tentativa {tentativa+1} erro: {e}")
+            finally:
+                browser.close()
 
-            # Tenta R$ primeiro, depois $ (caso o servidor esteja em inglês)
-            precos_brl = re.findall(r'R\$\s?([\d\.]+)', texto)
-            precos_usd = re.findall(r'\$\s?([\d,]+)', texto)
-
-            if precos_brl:
-                precos = [int(p.replace(".", "")) for p in precos_brl if len(p) >= 3]
-                print(f"  → Preços BRL encontrados: {precos[:5]}")
-            elif precos_usd:
-                precos = [int(p.replace(",", "")) for p in precos_usd if len(p) >= 3]
-                print(f"  → Preços USD encontrados: {precos[:5]}")
-            else:
-                precos = []
-                print("  → Nenhum preço encontrado no texto")
-                # Salva trecho do texto para debug
-                print("  → Trecho da página:", texto[:500])
-
-            return min(precos) if precos else None
-
-        except Exception as e:
-            print(f"Erro ao coletar preço para {cidade}:", e)
-            return None
-        finally:
-            browser.close()
+    print(f"  → Todas as tentativas falharam para {cidade}")
+    return None
 
 for cidade_destino, url in destinos.items():
     print(f"\nColetando: {cidade_destino}")
